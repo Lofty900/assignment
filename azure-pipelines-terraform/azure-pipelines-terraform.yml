@@ -1,0 +1,42 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+- job: Terraform
+  displayName: 'Terraform Plan and Apply'
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.x'
+      addToPath: true
+
+  - script: |
+      curl -O https://releases.hashicorp.com/terraform/1.9.1/terraform_1.9.1_linux_arm64.zip
+      unzip terraform_1.9.1_linux_arm64.zip
+      sudo mv terraform /usr/local/bin/
+    displayName: 'Install Terraform'
+
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: '<your-azure-subscription>'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        az account set --subscription $(azureSubscription)
+        terraform init
+        terraform plan -out tfplan
+        terraform apply -auto-approve tfplan
+    displayName: 'Terraform Plan and Apply'
+    
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: '<your-azure-subscription>'
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        terraform destroy -auto-approve
+    displayName: 'Terraform Destroy'
+    condition: eq(variables['Build.Reason'], 'Manual')
